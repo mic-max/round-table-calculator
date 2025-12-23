@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Round Table Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        svg {
+            margin-top: 20px;
+        }
+        input {
+            margin: 10px;
+            padding: 5px;
+            font-size: 16px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #board-width {
+            margin-top: 10px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Round Table Calculator</h1>
+    <label for="diameter">Diameter</label>
+    <input type="number" id="diameter" min="1" value="30.5" oninput="renderCircle()">
+
+    <label for="boards">Boards</label>
+    <input type="number" id="boards" min="3" value="5" oninput="renderCircle()">
+
+    <!-- have the option to specify board width or number of boards -->
+    <!-- have different wood patterns. radial, aligned, radial quandrants: https://www.woodtalkonline.com/uploads/monthly_2020_05/Quadrants.jpg.093745e9a8c188e3539f8f0f403a76fc.jpg -->
+    <!-- https://www.blocklayer.com/circle-barseng -->
+
+    <div id="svg-container"></div>
+    <div id="board-width"></div>
+    <div id="usage"></div>
+
+    <script>
+        function calculateBoards(diameter, boardCount) {
+            let boards = [];
+            for (let i = 1; i < boardCount / 2; i++) {
+                const x = (boardCount % 2 == 0 ? 2 : 1) / boardCount + ((i - 1) * 2 / boardCount);
+                const y = Math.sqrt(1 - Math.pow(x, 2));
+                boards.push(y);
+            }
+
+            let reversed = boards.slice().reverse();
+            boards = reversed.concat(boards);
+            let elementsToInsert = [1];
+            if (boardCount % 2 == 0) {
+                elementsToInsert.push(1);
+            }
+
+            let middleIndex = Math.floor(boards.length / 2);
+            boards.splice(middleIndex, 0, ...elementsToInsert);
+
+            const width = diameter / boardCount;
+            const boardHeights = boards.map(x => diameter * x);
+            const totalBoardArea = boardHeights.reduce((sum, height) => sum + (height * width), 0);
+            const length = boardHeights.reduce((a, b) => a + b, 0);
+            const circleArea = Math.PI * Math.pow(diameter / 2, 2);
+
+            return { width, length, boardHeights, totalBoardArea, circleArea };
+        }
+
+        function renderCircle() {
+            // Parse form input
+            const diameter = parseFloat(document.getElementById("diameter").value);
+            const boardCount = parseInt(document.getElementById("boards").value);
+
+            // Actual calculation
+            const { width, length, boardHeights, totalBoardArea, circleArea } = calculateBoards(diameter, boardCount);
+            const usage = circleArea / totalBoardArea;
+
+            // Rendering SVG
+            const svgSize = 500;
+            const boardPixelsWide = svgSize / boardCount;
+
+            const svgContainer = document.getElementById("svg-container");
+            svgContainer.innerHTML = "";
+
+            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svg.setAttribute("width", svgSize);
+            svg.setAttribute("height", svgSize);
+
+            boardHeights.forEach((height, i) => {
+                const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                rect.setAttribute("x", i * boardPixelsWide);
+                const rectHeight = (height / diameter) * svgSize;
+                const y = (svgSize - rectHeight) / 2;
+                rect.setAttribute("y", y);
+                rect.setAttribute("width", boardPixelsWide);
+                rect.setAttribute("height", rectHeight);
+                rect.setAttribute("fill", i % 2 === 0 ? "#cdb597" : "#ba9368");
+                svg.appendChild(rect);
+
+                // Add text to the rectangle
+                const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                text.setAttribute("x", (i + 0.5) * boardPixelsWide);
+                text.setAttribute("y", y + rectHeight / 2);
+                text.setAttribute("fill", "black");
+                text.setAttribute("font-size", "12");
+                text.setAttribute("dominant-baseline", "middle");
+                text.setAttribute("text-anchor", "middle");
+                text.textContent = height.toFixed(2);
+                svg.appendChild(text);
+            });
+
+            const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            circle.setAttribute("cx", svgSize / 2);
+            circle.setAttribute("cy", svgSize / 2);
+            circle.setAttribute("r", svgSize / 2);
+            circle.setAttribute("fill", "none");
+            circle.setAttribute("stroke", "#000");
+            circle.setAttribute("stroke-width", "2");
+            svg.appendChild(circle);
+
+            svgContainer.appendChild(svg);
+
+            // round up to nearest 1/4" for board widths and nearest inch for length?
+            document.getElementById("board-width").innerText = `Total Board: ${width.toFixed(2)}" x ${(length / 12).toFixed(2)}' - ${(totalBoardArea / 144).toFixed(2)} BF`;
+            document.getElementById("usage").innerText = `Usage: ${(usage * 100).toFixed(1)}%`;
+        }
+
+        renderCircle();
+    </script>
+</body>
+</html>
